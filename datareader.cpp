@@ -1,5 +1,3 @@
-// example code to read in a data file of city lat,long coordinates
-
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -67,7 +65,7 @@ double calcDist(int ncity, COORD *cities){
   return dist;
 }
 
-int WriteData(char* fname, int ncity, COORD *cities){
+int WriteData(char* fname, int ncity, COORD *cities, double execTime){
   FILE* fp = fopen(fname, "w");
   if (!fp) {
     printf("Error: Could not open output file %s\n", fname);
@@ -77,6 +75,7 @@ int WriteData(char* fname, int ncity, COORD *cities){
   fprintf(fp, "# Optimized TSP tour with %d cities\n", ncity);
   fprintf(fp, "# Format: longitude latitude\n");
   fprintf(fp, "# Total distance: %.2f km\n", calcDist(ncity, cities));
+  fprintf(fp, "# Execution time: %.3f seconds\n", execTime);
   
   for (int i = 0; i < ncity; i++) {
     fprintf(fp, "%.6f %.6f\n", cities[i].lon, cities[i].lat);
@@ -134,12 +133,25 @@ double estimateT0(int ncity, COORD *cities, int nSamples){
   return 2.0 * avgDelta;
 }
 
-double simulatedAnnealing(int ncity, COORD *cities, int tempIters, int itersPerTemp, double T0, double alpha){
+double simulatedAnnealing(int ncity, COORD *cities, int tempIters, int itersPerTemp, 
+                         double T0, double alpha, char* tempLogFile){
   srand(time(NULL));
   
   double currentDist = calcDist(ncity, cities);
   double bestDist = currentDist;
   double T = T0;
+  
+  // Open temperature log file if specified
+  FILE* tempLog = NULL;
+  if (tempLogFile != NULL) {
+    tempLog = fopen(tempLogFile, "w");
+    if (tempLog) {
+      fprintf(tempLog, "# Temperature vs Distance log\n");
+      fprintf(tempLog, "# Format: temperature distance(km)\n");
+    } else {
+      printf("Warning: Could not open temperature log file %s\n", tempLogFile);
+    }
+  }
   
   // Store best solution
   COORD bestCities[2500];
@@ -195,6 +207,11 @@ double simulatedAnnealing(int ncity, COORD *cities, int tempIters, int itersPerT
       }
     }
     
+    // Log temperature and current distance after thermalizing
+    if (tempLog) {
+      fprintf(tempLog, "%.6f %.6f\n", T, currentDist);
+    }
+    
     // Geometric cooling: T = T * alpha
     T = T * alpha;
     
@@ -204,6 +221,12 @@ double simulatedAnnealing(int ncity, COORD *cities, int tempIters, int itersPerT
              iter + 1, tempIters, currentDist, bestDist, T, 
              100.0 * accepted / currentTotalIter);
     }
+  }
+  
+  // Close temperature log file
+  if (tempLog) {
+    fclose(tempLog);
+    printf("Wrote temperature log to %s\n", tempLogFile);
   }
   
   // Restore best solution
@@ -227,6 +250,7 @@ int main(int argc, char *argv[]){
 
   if (argc<2){
     printf("Please provide a data file path as argument\n");
+    printf("Usage: %s <input_file> [tempIters] [itersPerTemp] [T0] [alpha] [output_file] [temp_log_file]\n", argv[0]);
     return 1;
   }
 
@@ -236,6 +260,10 @@ int main(int argc, char *argv[]){
   double T0 = (argc > 4) ? atof(argv[4]) : 0.0;
   double alpha = (argc > 5) ? atof(argv[5]) : 0.99;
   char* outfile = (argc > 6) ? argv[6] : (char*)"travelingsalesmansol.dat";
+  char* tempLogFile = (argc > 7) ? argv[7] : NULL;
+  
+  // Start timing
+  clock_t startTime = clock();
   
   // Read input data
   int ncity = GetData(infile, cities);
@@ -258,20 +286,28 @@ int main(int argc, char *argv[]){
   printf("  Iterations per temp: %d\n", itersPerTemp);
   printf("  Total iterations: %d\n", tempIters * itersPerTemp);
   printf("  Initial temperature: %.2f\n", T0);
-  printf("  Cooling rate (alpha): %.4f\n\n", alpha);
+  printf("  Cooling rate (alpha): %.4f\n", alpha);
+  if (tempLogFile) {
+    printf("  Temperature log file: %s\n", tempLogFile);
+  }
+  printf("\n");
   
   // Run simulated annealing
   printf("Running simulated annealing...\n");
-  double finalDist = simulatedAnnealing(ncity, cities, tempIters, itersPerTemp, T0, alpha);
+  double finalDist = simulatedAnnealing(ncity, cities, tempIters, itersPerTemp, T0, alpha, tempLogFile);
+  
+  // End timing
+  clock_t endTime = clock();
+  double execTime = (double)(endTime - startTime) / CLOCKS_PER_SEC;
   
   printf("\n=== RESULTS ===\n");
   printf("Initial distance: %.2f km\n", initialDist);
   printf("Final distance:   %.2f km\n", finalDist);
-  printf("Improvement:      %.2f%% reduction\n\n", 
+  printf("Improvement:      %.2f%% reduction\n", 
          100.0 * (initialDist - finalDist) / initialDist);
+  printf("Execution time:   %.3f seconds\n\n", execTime);
   
   // Write optimized tour to file
-  WriteData(outfile, ncity, cities);
+  WriteData(outfile, ncity, cities, execTime);
   return 0;
 }
-
