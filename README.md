@@ -1,10 +1,18 @@
-Starter code and data for traveling salesman problem
+traveling salesman problem
 
 
 INSTRUCTIONS:
-The simulated annealing code is in datareader.cpp. To run it first run the makefile if you haven't, then run datareader and enter parameters. The first parameter is the data file you are reading from, then the rest are optional but recommended to specify. They are the number of temperatures iterated over, the number of iterations per temperature, the initial temperature (recommended to leave at 0 so the program calculates it automatically), the cooling coefficient (after every temperature iteration, the temperature is multiplied by the cooling coefficient, coefficient of 0.99 corresponds to 1% decrease in temperature per iteration), and the name of the file that you want to write to.
+The simulated annealing code is in datareader.cpp. To run it first run the makefile if you haven't, then run datareader and enter parameters. The first parameter is the data file you are reading from, then the rest are optional but recommended to specify. They are the number of temperatures iterated over, the number of iterations per temperature, the initial temperature (recommended to leave at 0 so the program calculates it automatically), the cooling coefficient (after every temperature iteration, the temperature is multiplied by the cooling coefficient, coefficient of 0.99 corresponds to 1% decrease in temperature per iteration), the name of the file that you want to store the data of the optimized tour, and the name of the file that you want to store the distance vs temperature data.
 
-The sol.dat files have the minimized distance at the top. I still haven't made the plots of distance vs temperature but I will. Then you can see the cities pdfs that have the tour that my code found. The cities random pdfs are the tours that the cities data started with just reading them in order.
+statistics: - initial distance (km) - improved distance (km) - execution time (s)
+
+cities150 - 317298.65 - 47647.63 - 105.659
+cities1k - 732177.74 - 95378.61 - 79.19
+cities2k - 10187617.64 - 280855.00 - 97.244
+
+Increasing the number of iterations will increase the execution time but also makes it more likely to get a better solution.
+
+To pick the parameters, I always let the program calculate the initial temperature. I found online a good algorithm for calculating the initial temperature that chooses an initial temperature that is about double of an average change in energy for a random move (taking the absolute value of the delta). That way, the average bad move has about a 60% chance of being selected, which is a good place to start. Then to pick the number of iterations and the cooling coefficient, I just tried different numbers until I had a balance of execution time and performance. I kept the cooling coefficient very high at 0.999 to ensure smooth annealing and I modified the number of temperature iterations to end the annealing at around 0.5 degrees. From there, I just increased or decreased the iterations per temp.
 
 Files in this directory:
 
